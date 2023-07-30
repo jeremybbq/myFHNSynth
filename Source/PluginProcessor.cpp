@@ -23,26 +23,27 @@ MyFHNSynthAudioProcessor::MyFHNSynthAudioProcessor()
                        ),
     parameterTree(*this, nullptr, "parameterTreeID",
     {
-        std::make_unique<juce::AudioParameterFloat>("directInput", "Direct Input", 0.0f, 1.0f, 0.5f),
+        std::make_unique<juce::AudioParameterFloat>("directInput", "Direct Input", 0.0f, 1.0f, 0.0f),
         std::make_unique<juce::AudioParameterFloat>("noiseAmp", "Noise Input", 0.0f, 1.0f, 0.0f),
-        std::make_unique<juce::AudioParameterFloat>("oscInputAmp", "Oscillator Amplitude", 0.0f, 1.0f, 0.5f),
+        std::make_unique<juce::AudioParameterFloat>("oscAmp", "Oscillator Amplitude", 0.0f, 1.0f, 0.5f),
     
-        std::make_unique<juce::AudioParameterFloat>("oscModFreq", "Modulator Frequency", 0.0f, 0.5f, 0.0f),
-        std::make_unique<juce::AudioParameterFloat>("oscModAmp", "Modulator Amplitude", 0.0f, 1.0f, 0.0f),
+        std::make_unique<juce::AudioParameterFloat>("modFreq", "Modulator Frequency", 0.0f, 0.5f, 0.0f),
+        std::make_unique<juce::AudioParameterFloat>("modAmp", "Modulator Amplitude", 0.0f, 1.0f, 0.0f),
+        
+        std::make_unique<juce::AudioParameterFloat>("pulseWidth", "Pulse Width", 0.0f, 0.8f, 0.0f),
         
         std::make_unique<juce::AudioParameterChoice>("baseType", "Oscillator Type", juce::StringArray{"Sine", "Square", "Sawtooth"}, 0),
         std::make_unique<juce::AudioParameterChoice>("modType", "Modulator Type", juce::StringArray{"Sine", "Square"}, 0),
     
         std::make_unique<juce::AudioParameterFloat>("lfoFreq", "LFO Frequency", 0.0f, 20.0f, 0.0f),
-        std::make_unique<juce::AudioParameterFloat>("lfoAmp", "LFO Amplitude", 0.0f, 0.2f, 0.0f),
+        std::make_unique<juce::AudioParameterFloat>("lfoAmp", "LFO Amplitude", 0.0f, 1.0f, 0.0f),
         
         std::make_unique<juce::AudioParameterBool>("stereo", "Stereo", false),
-        std::make_unique<juce::AudioParameterFloat>("detune", "Detune", 0.0f, 10.0f, 0.0f),
-        std::make_unique<juce::AudioParameterFloat>("coupled", "Coupling", 0.0f, 1.0f, 0.0f),
+        std::make_unique<juce::AudioParameterFloat>("detune", "Detune", 0.0f, 20.0f, 0.0f),
+        std::make_unique<juce::AudioParameterFloat>("coupling", "Coupling", 0.0f, 1.0f, 0.0f),
     
         std::make_unique<juce::AudioParameterFloat>("cutoff", "Cutoff", 0.0f, 20000.0f, 20000.0f),
         std::make_unique<juce::AudioParameterFloat>("resonance", "Resonance", 0.0f, 20000.0f, 0.0f),
-        std::make_unique<juce::AudioParameterFloat>("keytrack", "Key Tracking", 0.0f, 1.0f, 0.0f),
         std::make_unique<juce::AudioParameterFloat>("strength", "Strength", 0.0f, 1.0f, 0.0f),
         std::make_unique<juce::AudioParameterChoice>("filterType", "Filter Type", juce::StringArray{"Low-Pass","High-Pass","Band-Pass"}, 0),
     
@@ -182,18 +183,13 @@ void MyFHNSynthAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
-    // This is the place where you'd normally do the guts of your plugin's
-    // audio processing...
-    // Make sure to reset the state if your inner loop is processing
-    // the samples and the outer loop is handling the channels.
-    // Alternatively, you can process the samples with the channels
-    // interleaved by keeping the same state.
-    for (int channel = 0; channel < totalNumInputChannels; ++channel)
+    for (int i = 0; i < voiceCount; i++)
     {
-        auto* channelData = buffer.getWritePointer (channel);
-
-        // ..do something to the data...
+        FHNSynthVoice* voice = dynamic_cast<FHNSynthVoice*>(fhnSynth.getVoice(i));
+        voice->updateParameters(parameterTree);
     }
+    
+    fhnSynth.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
 }
 
 //==============================================================================

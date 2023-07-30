@@ -8,10 +8,12 @@
   ==============================================================================
 */
 
-#pragma once
+#ifndef Synthesiser_h
+#define Synthesiser_h
 
 #include <JuceHeader.h>
 #include "Oscillator.h"
+#include "InputProcessor.h"
 #include "FHNSolver.h"
 
 class FHNSynthSound : public juce::SynthesiserSound
@@ -36,125 +38,95 @@ public:
      @param sampleRate float type sample rate
      */
     FHNSynthVoice(float sampleRate)
+      : lfo(new SinOsc(sampleRate)),
+        leftInput(new InputProcessor(sampleRate)), rightInput(new InputProcessor(sampleRate)),
+        oscType(0), modType(0),
+        leftSolver(new FHNSolver(sampleRate)), rightSolver(new FHNSolver(sampleRate))
+        
     {
-        sinOsc.setSampleRate(sampleRate);
-        squareOsc.setSampleRate(sampleRate);
-        sawtoothOsc.setSampleRate(sampleRate);
-        
-        sinMod.setSampleRate(sampleRate);
-        squareMod.setSampleRate(sampleRate);
-        
         envelope.setSampleRate(sampleRate);
-        envelope.setParameters(envelopeParam);
     }
 
     /**
-     Set mixing parameters of sinewave, sawwave and noise.
+     Update synth parameters from parameter tree's current state, called per buffer
     */
-    void setMixParameters(std::atomic<float>* _sinMix,
-        std::atomic<float>* _sawMix,
-        std::atomic<float>* _noiseMix,
-        std::atomic<float>* _subOscMix)
+    void updateParameters(const juce::AudioProcessorValueTreeState& apvts)
     {
-        sinMix = *_sinMix;
-        sawMix = *_sawMix;
-        noiseMix = *_noiseMix;
-        subOscMix = *_subOscMix;
-    }
-
-    /**
-     Set the ADSR for envelope.
-    */
-    void setEnvelopeParameters(std::atomic<float>* a,
-        std::atomic<float>* d,
-        std::atomic<float>* s,
-        std::atomic<float>* r)
-    {
-        envelopeParam.attack = *a;
-        envelopeParam.decay = *d;
-        envelopeParam.sustain = *s;
-        envelopeParam.release = *r;
-
-        envelope.setParameters(envelopeParam);
-    }
-
-    /**
-     Set pulse width for main and sub pulse oscillators.
-    */
-    void setPulseWidth(std::atomic<float>* pw)
-    {
-        squareWave.setPulseWidth(*pw);
-    }
-
-    /**
-     Set detune on frequencies of main oscillators on both left and right channels.
-    */
-    void setDetune(std::atomic<float>* detune)
-    {
-        sawDetune = *detune;
-    }
-
-    /**
-     Deviate oscillator frequency from note frequency and allow for hard sync.
-    */
-    void setHardSync(std::atomic<float>* hs)
-    {
-        hardSync = *hs;
-    }
-
-    /**
-     Set sub oscillator type.
-    */
-    void setSubOscType(std::atomic<float>* sub)
-    {
-        subOscType = *sub;
-    }
-
-    /*
-     Set IIR filter options and coefficients.
-    */
-    void setIIRFilter(std::atomic<float>* _cutoff,
-        std::atomic<float>* _resonance,
-        std::atomic<float>* _keytrack,
-        std::atomic<float>* _strength,
-        std::atomic<float>* _filterType)
-    {
-        cutoff = *_cutoff + *_keytrack * noteFrequency;
-        resonance = *_resonance;
-        filterType = *_filterType;
-        strength = *_strength;
-
-        if (filterType > 1)
+        // update main params
+        directInput = *apvts.getRawParameterValue("directInput");
+        oscAmp = *apvts.getRawParameterValue("oscAmp");
+        noiseAmp = *apvts.getRawParameterValue("noiseAmp");
+        
+        modFreq = *apvts.getRawParameterValue("modFreq");
+        modAmp = *apvts.getRawParameterValue("modAmp");
+        
+        pulseWidth = *apvts.getRawParameterValue("pulseWidth");
+        
+        // check input processor osc type change and update params
+        float newOscType = *apvts.getRawParameterValue("oscType");
+        float newModType = *apvts.getRawParameterValue("modType");
+        
+        if (oscType != newOscType)
         {
-            coeff = juce::IIRCoefficients::makeBandPass(getSampleRate(), cutoff);
+            oscType = newOscType;
+            leftInput->resetOscType(oscType);
+            rightInput->resetOscType(oscType);
         }
-        else if (filterType < 1)
+        if (modType != newModType)
         {
-            coeff = juce::IIRCoefficients::makeLowPass(getSampleRate(), cutoff);
-        }
-        else
-        {
-            coeff = juce::IIRCoefficients::makeHighPass(getSampleRate(), cutoff);
+            modType = newModType;
+            leftInput->resetModType(modType);
+            rightInput->resetModType(modType);
         }
         
-        filter.setCoefficients(coeff);
+        leftInput->updateParam(oscAmp, modFreq, modAmp, noiseAmp, pulseWidth);
+        rightInput->updateParam(oscAmp, modFreq, modAmp, noiseAmp, pulseWidth);
+        
+        lfoFreq = *apvts.getRawParameterValue("lfoFreq");
+        lfoAmp = *apvts.getRawParameterValue("lfoAmp");
+        lfo->setFrequency(lfoFreq);
+        
+        stereo = *apvts.getRawParameterValue("stereo");
+        detune = *apvts.getRawParameterValue("deturn");
+        coupling = *apvts.getRawParameterValue("coupling");
+        
+        // update filter
+        cutoff = *apvts.getRawParameterValue("cutoff");
+        resonance = *apvts.getRawParameterValue("resonance");
+        strength = *apvts.getRawParameterValue("strength");
+        
+        filterType = *apvts.getRawParameterValue("filterType");
+        switch (filterType)
+        {
+            case 0:
+                coeff = juce::IIRCoefficients::makeLowPass(getSampleRate(), cutoff, resonance);
+                leftFilter.setCoefficients(coeff);
+                rightFilter.setCoefficients(coeff);
+                break;
+            case 1:
+                coeff = juce::IIRCoefficients::makeHighPass(getSampleRate(), cutoff, resonance);
+                leftFilter.setCoefficients(coeff);
+                rightFilter.setCoefficients(coeff);
+                break;
+            case 2:
+                coeff = juce::IIRCoefficients:makeBandPass(getSampleRate(), cutoff, resonance);
+                leftFilter.setCoefficients(coeff);
+                rightFilter.setCoefficients(coeff);
+                break;
+            default:
+                leftFilter.makeInactive();
+                rightFilter.makeInactive();
+                break;
+        }
+        
+        // update ADSR
+        envelopeParam.attack = * apvts.getRawParameterValue("attack");
+        envelopeParam.decay = * apvts.getRawParameterValue("decay");;
+        envelopeParam.sustain = * apvts.getRawParameterValue("sustain");;
+        envelopeParam.release = * apvts.getRawParameterValue("release");;
+        envelope.setParameters(envelopeParam);
     }
 
-    /**
-     Set LFO parameters.
-    */
-    void setLFO(std::atomic<float>* _switch,
-        std::atomic<float>* _type,
-        std::atomic<float>* _target,
-        std::atomic<float>* _freq,
-        std::atomic<float>* _scale)
-    {
-        lfoSwitch = *_switch;
-        lfoType = *_type;
-        lfoTarget = *_target;
-        lfoFrequency = pow(10, *_freq);
-        lfoAmplitude = *_scale;
-    }
     /**
      What should be done when a note starts
 
@@ -202,94 +174,30 @@ public:
         if (playing) // check to see if this voice should be playing
         {
             // iterate through the necessary number of samples (from startSample up to startSample + numSamples)
-            for (int sampleIndex = startSample;   sampleIndex < (startSample+numSamples);   sampleIndex++)
+            for (int sampleIndex = startSample;   sampleIndex < (numSamples);   sampleIndex++)
             {
 
                 // get envelope sample
                 float envelopeVal = envelope.getNextSample();
 
-                //=========================================================================================
-
-                // set up lfo and modifying parameters
-                if (lfoSwitch)
-                {
-                    // get lfo sample depending on lfo type
-                    if (lfoType < 1)
-                    {
-                        sinlfo.setFrequency(lfoFrequency);
-                        lfoSample = sinlfo.process();
-                    }
-                    else if (lfoType > 1)
-                    {
-                        sawlfo.setFrequency(lfoFrequency);
-                        lfoSample = sawlfo.process();
-                    }
-                    else
-                    {
-                        sqrlfo.setFrequency(lfoFrequency);
-                        lfoSample = sqrlfo.process();
-                    }
-
-                    // compute modifying parameters from lfo sample
-                    if (lfoTarget < 1)
-                    {
-                        pitchMod = pow(2, lfoSample * lfoAmplitude);
-                        ampMod = 1;
-                        hardSyncMod = 1;
-                    }
-                    else if (lfoTarget > 1)
-                    {
-                        hardSyncMod = lfoSample * lfoAmplitude + 1;
-                        pitchMod = 1;
-                        ampMod = 1;
-                    }
-                    else
-                    {
-                        ampMod = lfoSample * lfoAmplitude + 1;
-                        pitchMod = 1;
-                        hardSyncMod = 1;
-                    }
-                }
-                else
-                {
-                    // make sure parameters resets to default when lfo off
-                    pitchMod = 1;
-                    ampMod = 1;
-                    hardSyncMod = 1;
-                }
-
-                // get main oscillators samples
-                oscFrequency = noteFrequency * std::pow(2, hardSync * hardSyncMod);
-                sqrwave.setFrequency(oscFrequency * pitchMod);
-                sawwave.setFrequency(oscFrequency * pitchMod);
-                sawwave2.setFrequency(oscFrequency * pitchMod * (1 + sawDetune));
-
-                float pulseSample = sqrwave.process() * sinMix;
-                float sawSample = (sawwave.process() + sawwave2.process()) / 2 * sawMix;
-                float noiseSample = noise.nextFloat() * noiseMix;
+                lfo->setFrequency(lfoFreq);
+                auto leftFrequency = noteFrequency * std::pow(2, lfo.processOscillator() * lfoAmp);
+                auto rightFrequency = leftFrequency + detune;
                 
-                // sub oscillator depends on type
-                float subSample = 0;
-                if (subOscType < 1)
-                {
-                    subSinewave.setFrequency(noteFrequency * pitchMod / 2);
-                    subSample = subSinewave.process();
-                }
-                else if (subOscType > 1)
-                {
-                    subSawwave.setFrequency(noteFrequency * pitchMod / 2);
-                    subSample = subSawwave.process();
-                }
-                else
-                {
-                    subSqrwave.setFrequency(noteFrequency * pitchMod / 2);
-                    subSample = subSqrwave.process();
-                }
-                subSample = subSample * subOscMix;
+                auto left = leftInput->processInput(directInput, leftFrequency);
+                auto right = rightInput->processInput(directInput, rightFrequency);
+
+                //auto k;
                 
-                //=========================================================================================
+                leftSolver->setTemporalScale(k);
+                rightSolver->setTemporalScale(k);
                 
-                float currentSample = pulseSample + sawSample + noiseSample + subSample;
+                auto currentLeft = leftSolver->getCurrentState();
+                auto currentRight = rightSolver->getCurrentState();
+                
+                auto leftSample = leftSolver->processSystem(left + coupling * currentRight);
+                auto rightSample = rightSolver->processSystem(right + coupling * currentLeft);
+                
                 float filteredSample = filter.processSingleSampleRaw(currentSample);
                 float finalSample = currentSample * (1 - strength) + filteredSample * strength;
                 
@@ -309,16 +217,6 @@ public:
 
                         // reset oscillators to avoid clipping when starting next note
                         phasor.resetPhase();
-                        phasor2.resetPhase();
-                        sqrwave.resetPhase();
-                        sawwave.resetPhase();
-                        sawwave2.resetPhase();
-                        subSqrwave.resetPhase();
-                        subSawwave.resetPhase();
-                        subSinewave.resetPhase();
-                        sqrlfo.resetPhase();
-                        sawlfo.resetPhase();
-                        sinlfo.resetPhase();
                     }
                 }
             }
@@ -346,29 +244,27 @@ private:
     
     bool playing = false;
     bool ending = false;
+    bool stereo = false;
 
     juce::ADSR envelope;
     juce::ADSR::Parameters envelopeParam;
 
-    // main oscillators and lfos
-    juce::Random noise;
-    SinOsc sinOsc, sinMod;
-    SquareOsc squareOsc, squareMod;
-    SawToothOsc sawtoothOsc;
+    // main oscillators and modules
+    SinOsc* lfo;
+    InputProcessor* leftInput, rightInput;
+    FHNSolver* leftSolver, rightSolver;
+
 
     // main params
-    float directInput, modAmp, noiseAmp;
-    float noteFrequency, detune;
+    float directInput, oscAmp, noiseAmp, modFreq, modAmp, pulseWidth;
+    float noteFrequency, detune, coupling, lfoFreq, lfoAmp;
     float oscType, modType;
     
     // IIR filter
-    juce::IIRFilter filter;
+    juce::IIRFilter leftFilter, rightFilter;
     juce::IIRCoefficients coeff;
-    float cutoff, resonance, strength, filterType;
-    
-    // lfo params and mod params
-    bool lfoSwitch = false;
-    float lfoType, lfoTarget, lfoFrequency, lfoAmplitude, lfoSample;
-    float pitchMod, ampMod, hardSyncMod;
+    float cutoff, resonance, keytrack, strength, filterType;
 
 };
+
+#endif /* Synthesiser.h */

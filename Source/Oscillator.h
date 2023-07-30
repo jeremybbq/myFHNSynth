@@ -9,7 +9,8 @@
   ==============================================================================
 */
 
-#pragma once
+#ifndef Oscillator_h
+#define Oscillator_h
 
 /**
  Base oscillator class
@@ -106,15 +107,6 @@ private:
 };
 
 /**
- Triangle oscillator built on Phasor base class
- */
-class TriOsc : public Phasor
-{
-    // redefine (override) the output function so that we can return a different function of the phase (p)
-    float output(float p) override  { return (std::fabsf(p - 0.5f) - 0.25f) * 4.0f; }
-};
-
-/**
  Sine Oscillator built on Phasor base class
  */
 class SinOsc : public Phasor
@@ -147,3 +139,5 @@ class SawToothOsc : public Phasor
 public:
     float output(float p) override  { return p * 2.0f - 1.0f; }
 };
+
+#endif /* Oscillator.h */

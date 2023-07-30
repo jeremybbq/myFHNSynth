@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <JUCERPROJECT id="SNn4Os" name="myFHNSynth" projectType="audioplug" useAppConfig="0"
-              addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1">
+              addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1"
+              pluginCharacteristicsValue="pluginIsSynth,pluginWantsMidiIn">
   <MAINGROUP id="oTO586" name="myFHNSynth">
     <GROUP id="{E782175A-4B17-538C-C6ED-EB4F52EF88EF}" name="Source">
       <FILE id="DjeQ8I" name="Oscillator.h" compile="0" resource="0" file="Source/Oscillator.h"/>
+      <FILE id="el6CV2" name="InputProcessor.h" compile="0" resource="0"
+            file="Source/InputProcessor.h"/>
+      <FILE id="NUxAqa" name="FHNSolver.h" compile="0" resource="0" file="Source/FHNSolver.h"/>
       <FILE id="WfXZEY" name="Synthesiser.h" compile="0" resource="0" file="Source/Synthesiser.h"/>
       <FILE id="ZO9FO3" name="PluginProcessor.cpp" compile="1" resource="0"
             file="Source/PluginProcessor.cpp"/>
@@ -13,7 +17,6 @@
       <FILE id="e1cjK3" name="PluginEditor.cpp" compile="1" resource="0"
             file="Source/PluginEditor.cpp"/>
       <FILE id="uykCRW" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
-      <FILE id="NUxAqa" name="FHNSolver.h" compile="0" resource="0" file="Source/FHNSolver.h"/>
     </GROUP>
   </MAINGROUP>
   <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1" JUCE_VST3_CAN_REPLACE_VST2="0"/>

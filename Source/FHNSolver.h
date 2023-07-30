@@ -8,7 +8,8 @@
   ==============================================================================
 */
 
-#pragma once
+#ifndef FHN_Solver_h
+#define FHN_Solver_h
 
 class FhnSolver
 {
@@ -83,7 +84,7 @@ public:
         return newDelta;
     }
     
-    void processSystem(float input)
+    float processSystem(float input)
     {
         currentInput = input;
         k1 = dy(currentState);
@@ -91,6 +92,7 @@ public:
         k3 = dy(updateCurrentState(k2/2));
         k4 = dy(updateCurrentState(k3));
         currentState = updateCurrentState((k1 + k2/2 + k3/2 + k4)/6);
+        return getCurrentState();
     }
     
     float getCurrentState()
@@ -106,4 +108,6 @@ private:
     float a = 0.7f, b = 0.8f, c = 0.1f, k = 1.0f;
     
 };
+
+#endif /* FHNSolver.h */
 
