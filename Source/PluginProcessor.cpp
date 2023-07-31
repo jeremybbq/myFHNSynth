@@ -51,6 +51,8 @@ MyFHNSynthAudioProcessor::MyFHNSynthAudioProcessor()
         std::make_unique<juce::AudioParameterFloat>("decay", "Decay", 0.0f, 1.0f, 0.1f),
         std::make_unique<juce::AudioParameterFloat>("sustain", "Sustain", 0.0f, 1.0f, 1.0f),
         std::make_unique<juce::AudioParameterFloat>("release", "Release", 0.0f, 1.0f, 0.1f),
+        
+        std::make_unique<juce::AudioParameterFloat>("amp", "Overall Amp", 0.0f, 1.0f, 1.0f),
     })
 #endif
 {

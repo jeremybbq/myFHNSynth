@@ -19,7 +19,7 @@ class InputProcessor
     
 public:
     InputProcessor(float sampleRate)
-        : mainOsc(new SinOsc()), modOsc(new SinOsc())
+        : mainOsc(new SinOsc), modOsc(new SinOsc)
     {
         mainOsc->setSampleRate(sampleRate);
         modOsc->setSampleRate(sampleRate);
@@ -28,7 +28,7 @@ public:
     void resetMainType(float mainType)
     {
         delete mainOsc;
-        switch (mainType)
+        switch (static_cast<int>(mainType))
         {
             case 0:
                 mainOsc = new SinOsc;
@@ -48,7 +48,10 @@ public:
     void resetModType(float modType)
     {
         delete modOsc;
-        modOsc = (modType) ? new SquareOsc : new SinOsc;
+        if (!modType)
+            modOsc = new SinOsc;
+        else
+            modOsc = new SquareOsc;
     }
     
     void updateParam(float newMainAmp, float newModFreq, float newModAmp, float newNoiseAmp, float pw)
@@ -62,22 +65,28 @@ public:
     
     void updatePulseWidth(float pw)
     {
-        if (SquareOsc* mainSquare = dynamic_cast<SquareOsc>(mainOsc))
+        if (SquareOsc* mainSquare = dynamic_cast<SquareOsc*>(mainOsc))
             mainSquare->setPulseWidth(pw);
-        if (SquareOsc* modSquare = dynamic_cast<SquareOsc>(modOsc))
+        if (SquareOsc* modSquare = dynamic_cast<SquareOsc*>(modOsc))
             modSquare->setPulseWidth(pw);
+    }
+    
+    void resetPhase()
+    {
+        mainOsc->resetPhase();
+        modOsc->resetPhase();
     }
     
     float processInput(float directInput, float frequency)
     {
-        mainOsc->setFrequency(frequency)
+        mainOsc->setFrequency(frequency);
         
         auto phaseOffset = modOsc->processOscillator() * modAmp;
-        mainOsc->setPhaseOffset(modOsc->processOscillator() * modAmp);
+        mainOsc->setPhaseOffset(phaseOffset);
         
-        auto osc = mainOsc->processOscillator() * mainAmp;
-        auto noise = noise.newFloat() * noiseAmp;
-        return directInput + osc + noise;
+        auto oscInput = mainOsc->processOscillator() * mainAmp;
+        auto noiseInput = noise.nextFloat() * noiseAmp;
+        return directInput + oscInput + noiseInput;
     }
     
     
@@ -88,6 +97,6 @@ private:
     
     float mainAmp, modAmp, noiseAmp;
     
-}
+};
 
 #endif /* InputProcessor.h */

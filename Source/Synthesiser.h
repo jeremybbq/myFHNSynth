@@ -38,10 +38,11 @@ public:
      @param sampleRate float type sample rate
      */
     FHNSynthVoice(float sampleRate)
-      : lfo(new SinOsc(sampleRate)),
-        leftInput(new InputProcessor(sampleRate)), rightInput(new InputProcessor(sampleRate)),
-        oscType(0), modType(0),
-        leftSolver(new FHNSolver(sampleRate)), rightSolver(new FHNSolver(sampleRate))
+      : lfo(new SinOsc),
+        leftInput(new InputProcessor(sampleRate)),
+        rightInput(new InputProcessor(sampleRate)),
+        leftSolver(new FhnSolver(sampleRate)),
+        rightSolver(new FhnSolver(sampleRate))
         
     {
         envelope.setSampleRate(sampleRate);
@@ -62,6 +63,8 @@ public:
         
         pulseWidth = *apvts.getRawParameterValue("pulseWidth");
         
+        amp = *apvts.getRawParameterValue("amp");
+        
         // check input processor osc type change and update params
         float newOscType = *apvts.getRawParameterValue("oscType");
         float newModType = *apvts.getRawParameterValue("modType");
@@ -69,8 +72,8 @@ public:
         if (oscType != newOscType)
         {
             oscType = newOscType;
-            leftInput->resetOscType(oscType);
-            rightInput->resetOscType(oscType);
+            leftInput->resetMainType(oscType);
+            rightInput->resetMainType(oscType);
         }
         if (modType != newModType)
         {
@@ -96,7 +99,7 @@ public:
         strength = *apvts.getRawParameterValue("strength");
         
         filterType = *apvts.getRawParameterValue("filterType");
-        switch (filterType)
+        switch (static_cast<int>(filterType))
         {
             case 0:
                 coeff = juce::IIRCoefficients::makeLowPass(getSampleRate(), cutoff, resonance);
@@ -109,7 +112,7 @@ public:
                 rightFilter.setCoefficients(coeff);
                 break;
             case 2:
-                coeff = juce::IIRCoefficients:makeBandPass(getSampleRate(), cutoff, resonance);
+                coeff = juce::IIRCoefficients::makeBandPass(getSampleRate(), cutoff, resonance);
                 leftFilter.setCoefficients(coeff);
                 rightFilter.setCoefficients(coeff);
                 break;
@@ -181,42 +184,60 @@ public:
                 float envelopeVal = envelope.getNextSample();
 
                 lfo->setFrequency(lfoFreq);
-                auto leftFrequency = noteFrequency * std::pow(2, lfo.processOscillator() * lfoAmp);
+                auto leftFrequency = noteFrequency * std::pow(2, lfo->processOscillator() * lfoAmp);
                 auto rightFrequency = leftFrequency + detune;
                 
                 auto left = leftInput->processInput(directInput, leftFrequency);
                 auto right = rightInput->processInput(directInput, rightFrequency);
 
-                //auto k;
+                auto k = 20000;
                 
                 leftSolver->setTemporalScale(k);
                 rightSolver->setTemporalScale(k);
                 
-                auto currentLeft = leftSolver->getCurrentState();
-                auto currentRight = rightSolver->getCurrentState();
+                auto currentDiff = leftSolver->getCurrentState() - rightSolver->getCurrentState();
                 
-                auto leftSample = leftSolver->processSystem(left + coupling * currentRight);
-                auto rightSample = rightSolver->processSystem(right + coupling * currentLeft);
+                auto leftSample = leftSolver->processSystem(left - coupling * currentDiff);
+                auto rightSample = rightSolver->processSystem(right + coupling * currentDiff);
                 
-                float filteredSample = filter.processSingleSampleRaw(currentSample);
-                float finalSample = currentSample * (1 - strength) + filteredSample * strength;
+                auto filteredLeft = leftFilter.processSingleSampleRaw(leftSample);
+                auto filteredRight = rightFilter.processSingleSampleRaw(rightSample);
+                
+                auto leftOutput = leftSample * (1 - strength) + filteredLeft * strength;
+                auto rightOutput = rightSample * (1 - strength) + filteredRight * strength;
+                
+                if (!stereo)
+                {
+                    leftOutput = (leftOutput + rightOutput) / 2.0f;
+                    rightOutput = leftOutput;
+                }
                 
                 // for each channel, write the currentSample float to the output
-                for (int chan = 0; chan<outputBuffer.getNumChannels(); chan++)
+                for (int chan = 0; chan < outputBuffer.getNumChannels(); chan++)
                 {
                     // The output sample is scaled by 0.2 so that it is not too loud by default
-                    outputBuffer.addSample (chan, sampleIndex, finalSample * envelopeVal * ampMod * 0.2);
+                    if (chan % 2 == 0)
+                        outputBuffer.addSample (chan, sampleIndex, leftOutput * envelopeVal * amp * 0.5);
+                    if (chan % 2 == 1)
+                        outputBuffer.addSample (chan, sampleIndex, leftOutput * envelopeVal * amp * 0.5);
                 }
 
                 if (ending)
                 {
-                    if (envelopeVal < 0.0001f)
+                    if (envelopeVal < 0.00001f)
                     {
                         clearCurrentNote();
                         playing = false;
 
                         // reset oscillators to avoid clipping when starting next note
-                        phasor.resetPhase();
+                        lfo->resetPhase();
+                        leftInput->resetPhase();
+                        rightInput->resetPhase();
+                        leftSolver->setCurrentState(0, 0);
+                        rightSolver->setCurrentState(0, 0);
+                        
+                        leftFilter.reset();
+                        rightFilter.reset();
                     }
                 }
             }
@@ -251,14 +272,14 @@ private:
 
     // main oscillators and modules
     SinOsc* lfo;
-    InputProcessor* leftInput, rightInput;
-    FHNSolver* leftSolver, rightSolver;
-
+    InputProcessor* leftInput, * rightInput;
+    FhnSolver* leftSolver, * rightSolver;
 
     // main params
     float directInput, oscAmp, noiseAmp, modFreq, modAmp, pulseWidth;
     float noteFrequency, detune, coupling, lfoFreq, lfoAmp;
-    float oscType, modType;
+    float oscType{0}, modType{0};
+    float amp{1};
     
     // IIR filter
     juce::IIRFilter leftFilter, rightFilter;

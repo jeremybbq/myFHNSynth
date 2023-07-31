@@ -15,7 +15,7 @@ class FhnSolver
 {
 public:
     
-    FhnSolver(float samplerate) : dt(1.0f/samplerate) {}
+    FhnSolver(float sampleRate) : dt(1.0f/sampleRate) {}
     ~FhnSolver() {}
     
     struct State
