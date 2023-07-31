@@ -111,7 +111,7 @@ private:
  */
 class SinOsc : public Phasor
 {
-    float output(float p) override  { return std::sin(p * 2.0 * M_PI); }
+    float output(float p) override  { return std::sin(p * 2.0 * 3.1415926); }
 };
 
 /**

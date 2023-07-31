@@ -32,7 +32,7 @@ MyFHNSynthAudioProcessor::MyFHNSynthAudioProcessor()
         
         std::make_unique<juce::AudioParameterFloat>("pulseWidth", "Pulse Width", 0.0f, 0.8f, 0.0f),
         
-        std::make_unique<juce::AudioParameterChoice>("baseType", "Oscillator Type", juce::StringArray{"Sine", "Square", "Sawtooth"}, 0),
+        std::make_unique<juce::AudioParameterChoice>("mainType", "Oscillator Type", juce::StringArray{"Sine", "Square", "Sawtooth"}, 0),
         std::make_unique<juce::AudioParameterChoice>("modType", "Modulator Type", juce::StringArray{"Sine", "Square"}, 0),
     
         std::make_unique<juce::AudioParameterFloat>("lfoFreq", "LFO Frequency", 0.0f, 20.0f, 0.0f),
@@ -43,7 +43,7 @@ MyFHNSynthAudioProcessor::MyFHNSynthAudioProcessor()
         std::make_unique<juce::AudioParameterFloat>("coupling", "Coupling", 0.0f, 1.0f, 0.0f),
     
         std::make_unique<juce::AudioParameterFloat>("cutoff", "Cutoff", 0.0f, 20000.0f, 20000.0f),
-        std::make_unique<juce::AudioParameterFloat>("resonance", "Resonance", 0.0f, 20000.0f, 0.0f),
+        std::make_unique<juce::AudioParameterFloat>("resonance", "Resonance", 0.0f, 20000.0f, 20000.0f),
         std::make_unique<juce::AudioParameterFloat>("strength", "Strength", 0.0f, 1.0f, 0.0f),
         std::make_unique<juce::AudioParameterChoice>("filterType", "Filter Type", juce::StringArray{"Low-Pass","High-Pass","Band-Pass"}, 0),
     

@@ -51,7 +51,7 @@ public:
     /**
      Update synth parameters from parameter tree's current state, called per buffer
     */
-    void updateParameters(const juce::AudioProcessorValueTreeState& apvts)
+    void updateParameters(juce::AudioProcessorValueTreeState& apvts)
     {
         // update main params
         directInput = *apvts.getRawParameterValue("directInput");
@@ -66,14 +66,14 @@ public:
         amp = *apvts.getRawParameterValue("amp");
         
         // check input processor osc type change and update params
-        float newOscType = *apvts.getRawParameterValue("oscType");
+        float newMainType = *apvts.getRawParameterValue("mainType");
         float newModType = *apvts.getRawParameterValue("modType");
         
-        if (oscType != newOscType)
+        if (mainType != newMainType)
         {
-            oscType = newOscType;
-            leftInput->resetMainType(oscType);
-            rightInput->resetMainType(oscType);
+            mainType = newMainType;
+            leftInput->resetMainType(mainType);
+            rightInput->resetMainType(mainType);
         }
         if (modType != newModType)
         {
@@ -90,7 +90,7 @@ public:
         lfo->setFrequency(lfoFreq);
         
         stereo = *apvts.getRawParameterValue("stereo");
-        detune = *apvts.getRawParameterValue("deturn");
+        detune = *apvts.getRawParameterValue("detune");
         coupling = *apvts.getRawParameterValue("coupling");
         
         // update filter
@@ -278,7 +278,7 @@ private:
     // main params
     float directInput, oscAmp, noiseAmp, modFreq, modAmp, pulseWidth;
     float noteFrequency, detune, coupling, lfoFreq, lfoAmp;
-    float oscType{0}, modType{0};
+    float mainType{0}, modType{0};
     float amp{1};
     
     // IIR filter
