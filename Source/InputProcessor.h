@@ -85,7 +85,7 @@ public:
         mainOsc->setPhaseOffset(phaseOffset);
         
         auto oscInput = mainOsc->processOscillator() * mainAmp;
-        auto noiseInput = noise.nextFloat() * noiseAmp;
+        auto noiseInput = (noise.nextFloat() - 0.5f) * noiseAmp * 2;
         return directInput + oscInput + noiseInput;
     }
     

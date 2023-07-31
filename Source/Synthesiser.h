@@ -63,6 +63,8 @@ public:
         
         pulseWidth = *apvts.getRawParameterValue("pulseWidth");
         
+        timeScale = *apvts.getRawParameterValue("k");
+        
         amp = *apvts.getRawParameterValue("amp");
         
         // check input processor osc type change and update params
@@ -190,7 +192,7 @@ public:
                 auto left = leftInput->processInput(directInput, leftFrequency);
                 auto right = rightInput->processInput(directInput, rightFrequency);
 
-                auto k = 20000;
+                auto k = noteFrequency / 0.01615 * timeScale;
                 
                 leftSolver->setTemporalScale(k);
                 rightSolver->setTemporalScale(k);
@@ -279,6 +281,7 @@ private:
     float directInput, oscAmp, noiseAmp, modFreq, modAmp, pulseWidth;
     float noteFrequency, detune, coupling, lfoFreq, lfoAmp;
     float mainType{0}, modType{0};
+    float timeScale;
     float amp{1};
     
     // IIR filter
