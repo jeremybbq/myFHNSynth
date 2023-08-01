@@ -45,6 +45,7 @@ public:
         rightSolver(new FhnSolver(sampleRate))
         
     {
+        lfo->setSampleRate(sampleRate);
         envelope.setSampleRate(sampleRate);
     }
 
@@ -221,7 +222,7 @@ public:
                     if (chan % 2 == 0)
                         outputBuffer.addSample (chan, sampleIndex, leftOutput * envelopeVal * amp * 0.5);
                     if (chan % 2 == 1)
-                        outputBuffer.addSample (chan, sampleIndex, leftOutput * envelopeVal * amp * 0.5);
+                        outputBuffer.addSample (chan, sampleIndex, rightOutput * envelopeVal * amp * 0.5);
                 }
 
                 if (ending)
