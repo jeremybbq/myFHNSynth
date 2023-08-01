@@ -63,7 +63,7 @@ public:
         
         pulseWidth = *apvts.getRawParameterValue("pulseWidth");
         
-        timeScale = *apvts.getRawParameterValue("k");
+        timeScale = *apvts.getRawParameterValue("timeScale");
         
         amp = *apvts.getRawParameterValue("amp");
         
