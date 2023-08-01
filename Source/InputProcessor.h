@@ -92,7 +92,7 @@ public:
     
 private:
     juce::Random noise;
-    Phasor* mainOsc;
+    Phasor* mainOsc; // std::unique_ptr
     Phasor* modOsc;
     
     float mainAmp, modAmp, noiseAmp;
