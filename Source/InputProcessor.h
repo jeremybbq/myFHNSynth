@@ -18,45 +18,38 @@ class InputProcessor
 {
     
 public:
-    InputProcessor(float sampleRate)
-        : mainOsc(new SinOsc), modOsc(new SinOsc)
+    InputProcessor(float _sampleRate)
+        : mainOsc(std::make_unique<SinOsc>()), 
+        modOsc(std::make_unique<SinOsc>())
     {
+        sampleRate = _sampleRate;
         mainOsc->setSampleRate(sampleRate);
         modOsc->setSampleRate(sampleRate);
     }
     
     void resetMainType(float mainType)
     {
-        delete mainOsc;
-        switch (static_cast<int>(mainType))
-        {
-            case 0:
-                mainOsc = new SinOsc;
-                break;
-            case 1:
-                mainOsc = new SquareOsc;
-                break;
-            case 2:
-                mainOsc = new SawToothOsc;
-                break;
-            default:
-                mainOsc = nullptr;
-                break;
-        }
+        if (!mainType)
+            mainOsc = std::make_unique<SinOsc>();
+        else if (mainType == 1)
+            mainOsc = std::make_unique<SquareOsc>();
+        else if (mainType == 2)
+            mainOsc = std::make_unique<SawToothOsc>();
+        mainOsc->setSampleRate(sampleRate);
     }
     
     void resetModType(float modType)
     {
-        delete modOsc;
         if (!modType)
-            modOsc = new SinOsc;
+            modOsc = std::make_unique<SinOsc>();
         else
-            modOsc = new SquareOsc;
+            modOsc = std::make_unique<SquareOsc>();
+        modOsc->setSampleRate(sampleRate);
     }
     
     void updateParam(float newMainAmp, float newModFreq, float newModAmp, float newNoiseAmp, float pw)
     {
-        modOsc->setFrequency(newModFreq);
+        modFreq = newModFreq;
         mainAmp = newMainAmp;
         modAmp = newModAmp;
         noiseAmp = newNoiseAmp;
@@ -65,9 +58,9 @@ public:
     
     void updatePulseWidth(float pw)
     {
-        if (SquareOsc* mainSquare = dynamic_cast<SquareOsc*>(mainOsc))
+        if (SquareOsc* mainSquare = dynamic_cast<SquareOsc*>(mainOsc.get()))
             mainSquare->setPulseWidth(pw);
-        if (SquareOsc* modSquare = dynamic_cast<SquareOsc*>(modOsc))
+        if (SquareOsc* modSquare = dynamic_cast<SquareOsc*>(modOsc.get()))
             modSquare->setPulseWidth(pw);
     }
     
@@ -79,6 +72,7 @@ public:
     
     float processInput(float directInput, float frequency)
     {
+        modOsc->setFrequency(frequency * (std::pow(2, modFreq) - 1));
         mainOsc->setFrequency(frequency);
         
         auto phaseOffset = modOsc->processOscillator() * modAmp;
@@ -92,10 +86,11 @@ public:
     
 private:
     juce::Random noise;
-    Phasor* mainOsc; // std::unique_ptr
-    Phasor* modOsc;
+    std::unique_ptr<Phasor> mainOsc; // std::unique_ptr
+    std::unique_ptr<Phasor> modOsc;
     
-    float mainAmp, modAmp, noiseAmp;
+    float sampleRate;
+    float mainAmp, modFreq, modAmp, noiseAmp;
     
 };
 

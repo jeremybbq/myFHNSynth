@@ -39,25 +39,6 @@ public:
         return output(phase + phaseOffset);
     }
 
-    /**
-     update phase and check if entered next period.
-    */
-    bool checkNextPeriod()
-    {
-        phase += phaseDelta;
-
-        if (phase > 1.0f)
-        {
-            phase -= 1.0f;
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-            
-    }
-
     // force reset phase to start next period
     void resetPhase()
     {

@@ -193,10 +193,11 @@ public:
                 auto left = leftInput->processInput(directInput, leftFrequency);
                 auto right = rightInput->processInput(directInput, rightFrequency);
 
-                auto k = noteFrequency / 0.01615 * timeScale;
+                auto k1 = noteFrequency / 0.01615f * timeScale;
+                auto k2 = (noteFrequency + detune) / 0.01615f * timeScale;
                 
-                leftSolver->setTemporalScale(k);
-                rightSolver->setTemporalScale(k);
+                leftSolver->setTemporalScale(k1);
+                rightSolver->setTemporalScale(k2);
                 
                 auto currentDiff = leftSolver->getCurrentState() - rightSolver->getCurrentState();
                 
